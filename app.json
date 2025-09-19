@@ -13,7 +13,9 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sahilbarak01.HealthMate",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +23,16 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.sahilbarak01.HealthMate"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "scheme": "healthmate",
+    "plugins": [
+      "expo-apple-authentication",
+      "expo-web-browser"
+    ]
   }
 }
