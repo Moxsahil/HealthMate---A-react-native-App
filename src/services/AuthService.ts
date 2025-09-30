@@ -53,6 +53,7 @@ if (getApps().length === 0) {
 auth = getAuth(app);
 console.log('Firebase Auth initialized');
 
+
 // Google OAuth configuration
 const googleConfig = {
   clientId: process.env.EXPO_PUBLIC_GOOGLE_SIGNIN_WEB_CLIENT_ID || '',
@@ -141,54 +142,61 @@ export class AuthService {
     }
   }
 
-  // Google Sign In using simplified Implicit Flow
+  // Google Sign In using proper redirect URI
   static async loginWithGoogle(): Promise<AuthUser> {
     try {
       console.log('Google Sign-In attempt started');
-      console.log('Client ID:', googleConfig.clientId);
 
-      // Use a fixed HTTPS redirect URI that Google accepts
-      const redirectUri = 'https://auth.expo.io/@anonymous/HealthMate';
-      console.log('Redirect URI:', redirectUri);
+      const clientId = process.env.EXPO_PUBLIC_GOOGLE_SIGNIN_WEB_CLIENT_ID;
+      if (!clientId) {
+        throw new Error('Google Client ID not configured');
+      }
 
-      // Create the authorization request using Implicit Flow
-      const request = new AuthSession.AuthRequest({
-        clientId: googleConfig.clientId,
-        scopes: ['openid', 'profile', 'email'],
-        responseType: AuthSession.ResponseType.IdToken,
-        redirectUri: redirectUri,
-      });
+      // Use a fixed redirect URI that should be in your Google Console
+      const redirectUri = 'https://auth.expo.io/@anonymous/healthmate';
 
-      console.log('Starting Google OAuth...');
-      console.log('Request URL will be built...');
+      console.log('Using redirect URI:', redirectUri);
+      console.log('Using client ID:', clientId);
 
-      // Use Google's OAuth endpoint directly
-      const result = await request.promptAsync({
-        authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-      });
+      // Build auth URL manually
+      const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
+        new URLSearchParams({
+          client_id: clientId,
+          redirect_uri: redirectUri,
+          response_type: 'id_token',
+          scope: 'openid profile email',
+          nonce: Math.random().toString(36).substring(2, 15),
+          prompt: 'select_account',
+        }).toString();
 
-      console.log('Auth result type:', result.type);
-      console.log('Full result:', JSON.stringify(result, null, 2));
+      console.log('Opening Google authentication...');
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+      console.log('Auth result:', result);
 
       if (result.type !== 'success') {
-        throw new Error(`Authentication failed: ${result.type}`);
+        throw new Error('Authentication cancelled');
       }
 
-      if (!result.params.id_token) {
-        console.log('Available params:', Object.keys(result.params));
-        throw new Error('No ID token received from Google');
+      // Extract ID token from URL fragment
+      const url = result.url;
+      const fragment = url.split('#')[1];
+      if (!fragment) {
+        throw new Error('No authentication data received');
       }
 
-      console.log('Successfully got ID token');
+      const params = new URLSearchParams(fragment);
+      const idToken = params.get('id_token');
 
-      // Create a Google credential with the ID token
-      const googleCredential = GoogleAuthProvider.credential(result.params.id_token);
+      if (!idToken) {
+        throw new Error('No ID token received');
+      }
 
-      // Sign-in with Firebase using the Google credential
-      const userCredential = await signInWithCredential(auth, googleCredential);
+      // Create Firebase credential
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, credential);
       const firebaseUser = userCredential.user;
-
-      console.log('Firebase Google Sign-In successful:', firebaseUser.uid);
 
       const authUser: AuthUser = {
         id: firebaseUser.uid,
@@ -198,16 +206,10 @@ export class AuthService {
         emailVerified: firebaseUser.emailVerified,
       };
 
-      console.log('Google user authenticated:', authUser);
       return authUser;
 
     } catch (error: any) {
       console.error('Google Sign-In error:', error);
-
-      if (error.message?.includes('cancelled')) {
-        throw new Error('Google Sign-In was cancelled');
-      }
-
       throw new Error('Google Sign-In failed: ' + error.message);
     }
   }

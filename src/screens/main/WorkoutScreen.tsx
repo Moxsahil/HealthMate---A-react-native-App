@@ -16,7 +16,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import WorkoutSessionModal from '../../components/WorkoutSessionModal';
 import WorkoutLibraryModal from '../../components/WorkoutLibraryModal';
-import WorkoutHistoryModal from '../../components/WorkoutHistoryModal';
 import HealthDataSync from '../../components/HealthDataSync';
 import {
   setSelectedCategory,
@@ -36,11 +35,84 @@ interface WorkoutCategory {
   subcategories: string[];
 }
 
-// Dynamic workout categories based on available exercises and templates
+const workoutCategories: WorkoutCategory[] = [
+  {
+    id: '1',
+    name: 'Strength',
+    icon: 'barbell',
+    color: '#FF6B6B',
+    subcategories: ['Upper Body', 'Lower Body', 'Full Body', 'Core'],
+  },
+  {
+    id: '2',
+    name: 'Cardio',
+    icon: 'heart',
+    color: '#4ECDC4',
+    subcategories: ['Running', 'Cycling', 'Swimming', 'HIIT'],
+  },
+  {
+    id: '3',
+    name: 'Flexibility',
+    icon: 'body',
+    color: '#45B7D1',
+    subcategories: ['Yoga', 'Stretching', 'Pilates', 'Mobility'],
+  },
+  {
+    id: '4',
+    name: 'Sports',
+    icon: 'basketball',
+    color: '#96CEB4',
+    subcategories: ['Basketball', 'Tennis', 'Football', 'Baseball'],
+  },
+];
 
-// Quick workout templates now come from Redux store
+const quickWorkoutTemplates: WorkoutTemplate[] = [
+  {
+    id: 'quick-15',
+    name: 'Quick 15min',
+    description: 'Fast and effective 15-minute full body workout',
+    category: 'Strength',
+    difficulty: 'Beginner',
+    estimatedDuration: 15,
+    exercises: [
+      { exerciseId: '1', sets: 3, reps: 15, restTime: 30 },
+      { exerciseId: '2', sets: 3, reps: 10, restTime: 30 },
+      { exerciseId: '3', sets: 2, duration: 60, restTime: 30 },
+    ],
+    isCustom: false,
+    timesUsed: 0,
+  },
+  {
+    id: 'hiit',
+    name: 'HIIT Cardio',
+    description: 'High-intensity interval training',
+    category: 'Cardio',
+    difficulty: 'Intermediate',
+    estimatedDuration: 20,
+    exercises: [
+      { exerciseId: '4', sets: 4, duration: 45, restTime: 15 },
+      { exerciseId: '5', sets: 4, duration: 30, restTime: 30 },
+    ],
+    isCustom: false,
+    timesUsed: 0,
+  },
+  {
+    id: 'stretch',
+    name: 'Stretch & Mobility',
+    description: 'Relaxing stretching routine',
+    category: 'Flexibility',
+    difficulty: 'Beginner',
+    estimatedDuration: 10,
+    exercises: [
+      { exerciseId: '6', sets: 1, duration: 30, restTime: 10 },
+      { exerciseId: '7', sets: 1, duration: 45, restTime: 10 },
+    ],
+    isCustom: false,
+    timesUsed: 0,
+  },
+];
 
-const WorkoutsScreen: React.FC = () => {
+const WorkoutScreen: React.FC = () => {
   const { colors, isDark } = useTheme();
   const dispatch = useDispatch();
   const {
@@ -49,15 +121,11 @@ const WorkoutsScreen: React.FC = () => {
     activeSession,
     isWorkoutActive,
     social,
-    workoutTemplates,
-    exercises,
-    personalizedRecommendations,
-    isLoading,
   } = useSelector((state: RootState) => state.workout);
 
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [personalizedRecommendations, setPersonalizedRecommendations] = useState<WorkoutTemplate[]>([]);
 
   useEffect(() => {
     dispatch(loadWorkoutDataAsync());
@@ -69,69 +137,23 @@ const WorkoutsScreen: React.FC = () => {
     }
   }, [activeSession]);
 
-  // Remove the local recommendations state since we're now using Redux
-  // The recommendations are automatically updated in the Redux store
-
-  // Get quick workout templates from Redux store - filtered by duration
-  const quickWorkoutTemplates = workoutTemplates.filter(t => t.estimatedDuration <= 20);
-
-  // Generate dynamic workout categories based on available exercises and templates
-  const workoutCategories = React.useMemo(() => {
-    const categoryIcons = {
-      'Strength': 'barbell',
-      'Cardio': 'heart',
-      'Flexibility': 'body',
-      'Sports': 'basketball'
-    };
-
-    const categoryColors = {
-      'Strength': '#FF6B6B',
-      'Cardio': '#4ECDC4',
-      'Flexibility': '#45B7D1',
-      'Sports': '#96CEB4'
-    };
-
-    // Get unique categories from exercises and templates
-    const exerciseCategories = [...new Set(exercises.map(ex => ex.category))];
-    const templateCategories = [...new Set(workoutTemplates.map(t => t.category))];
-    const allCategories = [...new Set([...exerciseCategories, ...templateCategories])];
-
-    return allCategories.map((category, index) => {
-      // Get subcategories from exercises in this category
-      const categoryExercises = exercises.filter(ex => ex.category === category);
-      const subcategories = [...new Set(categoryExercises.map(ex => ex.subcategory || ex.category))];
-
-      return {
-        id: `cat-${index}`,
-        name: category,
-        icon: categoryIcons[category as keyof typeof categoryIcons] || 'fitness',
-        color: categoryColors[category as keyof typeof categoryColors] || '#667eea',
-        subcategories: subcategories.slice(0, 4), // Limit to 4 subcategories
-      };
-    });
-  }, [exercises, workoutTemplates]);
-
-  const handleStartQuickWorkout = (category: string) => {
-    // Find a template that matches the category and is quick
-    let template = workoutTemplates.find(t =>
-      t.category === category && t.estimatedDuration <= 20
+  useEffect(() => {
+    // Generate personalized recommendations
+    const recommendations = WorkoutService.generatePersonalizedRecommendations(
+      stats,
+      [], // workoutSessions - would come from Redux in real implementation
+      {
+        preferredCategories: selectedCategory ? [selectedCategory] : undefined,
+        availableTime: 30,
+        fitnessLevel: 'Intermediate',
+        goals: ['strength', 'endurance'],
+      }
     );
+    setPersonalizedRecommendations(recommendations);
+  }, [stats, selectedCategory]);
 
-    // Fallback to any template in the category
-    if (!template) {
-      template = workoutTemplates.find(t => t.category === category);
-    }
-
-    // Generate a custom workout if no template exists
-    if (!template && exercises.length > 0) {
-      template = WorkoutService.generateCustomWorkout(
-        15, // 15 minutes
-        category,
-        'Beginner',
-        exercises
-      );
-    }
-
+  const handleStartQuickWorkout = (templateId: string) => {
+    const template = quickWorkoutTemplates.find(t => t.id === templateId);
     if (template) {
       dispatch(startWorkout({
         name: template.name,
@@ -145,7 +167,7 @@ const WorkoutsScreen: React.FC = () => {
       'Start Workout',
       'Choose a workout type',
       [
-        { text: 'Quick Start', onPress: () => handleStartQuickWorkout('Strength') },
+        { text: 'Quick Start', onPress: () => handleStartQuickWorkout('quick-15') },
         { text: 'Browse Library', onPress: () => setShowLibraryModal(true) },
         { text: 'Cancel', style: 'cancel' },
       ]
@@ -187,24 +209,24 @@ const WorkoutsScreen: React.FC = () => {
       <View style={styles.quickActions}>
         <TouchableOpacity
           style={[styles.quickAction, { backgroundColor: colors.card }]}
-          onPress={() => handleStartQuickWorkout('Strength')}
+          onPress={() => handleStartQuickWorkout('quick-15')}
         >
-          <Ionicons name="barbell" size={20} color={colors.primary} />
-          <Text style={[styles.quickActionText, { color: colors.text }]}>Strength</Text>
+          <Ionicons name="time" size={20} color={colors.primary} />
+          <Text style={[styles.quickActionText, { color: colors.text }]}>Quick 15min</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.quickAction, { backgroundColor: colors.card }]}
-          onPress={() => handleStartQuickWorkout('Cardio')}
+          onPress={() => handleStartQuickWorkout('hiit')}
         >
-          <Ionicons name="heart" size={20} color={colors.primary} />
-          <Text style={[styles.quickActionText, { color: colors.text }]}>Cardio</Text>
+          <Ionicons name="flash" size={20} color={colors.primary} />
+          <Text style={[styles.quickActionText, { color: colors.text }]}>HIIT</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.quickAction, { backgroundColor: colors.card }]}
-          onPress={() => handleStartQuickWorkout('Flexibility')}
+          onPress={() => handleStartQuickWorkout('stretch')}
         >
           <Ionicons name="body" size={20} color={colors.primary} />
-          <Text style={[styles.quickActionText, { color: colors.text }]}>Flexibility</Text>
+          <Text style={[styles.quickActionText, { color: colors.text }]}>Stretch</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -314,11 +336,8 @@ const WorkoutsScreen: React.FC = () => {
         </View>
       )}
 
-      <TouchableOpacity
-        style={[styles.viewDetailsButton, { backgroundColor: colors.card }]}
-        onPress={() => setShowHistoryModal(true)}
-      >
-        <Text style={[styles.viewDetailsText, { color: colors.primary }]}>View Workout History</Text>
+      <TouchableOpacity style={[styles.viewDetailsButton, { backgroundColor: colors.card }]}>
+        <Text style={[styles.viewDetailsText, { color: colors.primary }]}>View Detailed Progress</Text>
         <Ionicons name="chevron-forward" size={16} color={colors.primary} />
       </TouchableOpacity>
     </View>
@@ -384,7 +403,7 @@ const WorkoutsScreen: React.FC = () => {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.libraryScroll}>
-        {workoutTemplates.slice(0, 5).map((template) => (
+        {WorkoutService.defaultTemplates.map((template) => (
           <TouchableOpacity
             key={template.id}
             style={[styles.libraryCard, { backgroundColor: colors.surface }]}
@@ -456,11 +475,6 @@ const WorkoutsScreen: React.FC = () => {
       <WorkoutLibraryModal
         visible={showLibraryModal}
         onClose={() => setShowLibraryModal(false)}
-      />
-
-      <WorkoutHistoryModal
-        visible={showHistoryModal}
-        onClose={() => setShowHistoryModal(false)}
       />
     </SafeAreaView>
   );
@@ -819,4 +833,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default WorkoutsScreen;
+export default WorkoutScreen;

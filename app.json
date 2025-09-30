@@ -2,6 +2,7 @@
   "expo": {
     "name": "HealthMate",
     "slug": "HealthMate",
+    "owner": "sahilbarak01",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -30,9 +31,6 @@
       "favicon": "./assets/favicon.png"
     },
     "scheme": "healthmate",
-    "plugins": [
-      "expo-apple-authentication",
-      "expo-web-browser"
-    ]
+    "plugins": ["expo-apple-authentication", "expo-web-browser"]
   }
 }
