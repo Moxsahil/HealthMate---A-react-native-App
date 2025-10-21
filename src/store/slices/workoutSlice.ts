@@ -291,15 +291,15 @@ const calculateStatsFromHistory = (sessions: WorkoutSession[]) => {
 
 
 const initialState: WorkoutState = {
-  // Core workout data with sample data
+  // Core workout data - start with empty real data
   exercises: [],
-  workoutSessions: sampleWorkoutHistory,
+  workoutSessions: [],
   workoutTemplates: [],
   activeSession: null,
 
   // Legacy support
   currentWorkout: null,
-  workoutHistory: sampleWorkoutHistory,
+  workoutHistory: [],
   exerciseDatabase: [],
   isWorkoutActive: false,
   workoutStartTime: null,
@@ -319,7 +319,7 @@ const initialState: WorkoutState = {
       runningPace: 6,
     },
   },
-  stats: calculateStatsFromHistory(sampleWorkoutHistory),
+  stats: calculateStatsFromHistory([]),
   personalizedRecommendations: [],
 
   // Social features with real progress
@@ -331,7 +331,7 @@ const initialState: WorkoutState = {
         description: 'Complete 20 workouts in 30 days',
         type: 'frequency',
         target: 20,
-        progress: Math.min(sampleWorkoutHistory.length, 20),
+        progress: 0,
         startDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
         endDate: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000).toISOString(),
         participants: ['user1', 'user2', 'user3'],
@@ -343,7 +343,7 @@ const initialState: WorkoutState = {
         description: 'Burn 3000 calories this month',
         type: 'calories',
         target: 3000,
-        progress: calculateStatsFromHistory(sampleWorkoutHistory).monthlyStats.caloriesBurned,
+        progress: 0,
         startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
         endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString(),
         participants: ['user1', 'user4', 'user5'],
@@ -356,24 +356,24 @@ const initialState: WorkoutState = {
         name: 'First Workout',
         description: 'Complete your first workout',
         iconUrl: 'trophy',
-        unlockedAt: sampleWorkoutHistory[0]?.date,
-        isUnlocked: sampleWorkoutHistory.length > 0,
+        unlockedAt: undefined,
+        isUnlocked: false,
       },
       {
         id: '2',
         name: 'Week Warrior',
         description: 'Complete 7 workouts in a week',
         iconUrl: 'medal',
-        unlockedAt: sampleWorkoutHistory.length >= 7 ? new Date().toISOString() : undefined,
-        isUnlocked: sampleWorkoutHistory.length >= 7,
+        unlockedAt: undefined,
+        isUnlocked: false,
       },
       {
         id: '3',
         name: 'Consistency Champion',
         description: 'Maintain a 5-day workout streak',
         iconUrl: 'flame',
-        unlockedAt: calculateStatsFromHistory(sampleWorkoutHistory).currentStreak >= 5 ? new Date().toISOString() : undefined,
-        isUnlocked: calculateStatsFromHistory(sampleWorkoutHistory).currentStreak >= 5,
+        unlockedAt: undefined,
+        isUnlocked: false,
       },
     ],
     friends: [
@@ -535,18 +535,23 @@ const workoutSlice = createSlice({
           caloriesBurned: action.payload.caloriesBurned,
           isActive: false,
         };
-        state.workoutSessions.push(completedSession);
-        state.workoutHistory.push(completedSession);
+        state.workoutSessions.unshift(completedSession);
+        state.workoutHistory.unshift(completedSession);
         state.currentWorkout = null;
         state.activeSession = null;
         state.isWorkoutActive = false;
         state.workoutStartTime = null;
 
-        // Update stats
-        state.stats.totalWorkouts += 1;
-        state.stats.totalDuration += action.payload.duration;
-        state.stats.totalCaloriesBurned += action.payload.caloriesBurned;
-        state.stats.averageWorkoutDuration = state.stats.totalDuration / state.stats.totalWorkouts;
+        // Recalculate stats from all sessions
+        const newStats = calculateStatsFromHistory(state.workoutSessions);
+        state.stats = newStats;
+
+        // Persist to AsyncStorage
+        AsyncStorage.setItem('workoutData', JSON.stringify({
+          workoutSessions: state.workoutSessions,
+          stats: newStats,
+          social: state.social,
+        })).catch(error => console.error('Failed to persist workout data:', error));
       }
     },
     pauseWorkout: (state) => {
@@ -685,6 +690,16 @@ const workoutSlice = createSlice({
             };
           }
 
+          // Load persisted stats if available
+          if (action.payload.stats) {
+            state.stats = action.payload.stats;
+          }
+
+          // Load persisted social data if available
+          if (action.payload.social) {
+            state.social = action.payload.social;
+          }
+
           // Update personalized recommendations based on loaded data
           const recommendations = require('../../services/workoutService').WorkoutService.generatePersonalizedRecommendations(
             state.stats,
@@ -727,6 +742,13 @@ const workoutSlice = createSlice({
         // Recalculate stats from all sessions
         const newStats = calculateStatsFromHistory(state.workoutSessions);
         state.stats = newStats;
+
+        // Persist workout sessions to AsyncStorage
+        AsyncStorage.setItem('workoutData', JSON.stringify({
+          workoutSessions: state.workoutSessions,
+          stats: newStats,
+          social: state.social,
+        })).catch(error => console.error('Failed to persist workout data:', error));
 
         // Update challenge progress
         state.social.challenges.forEach(challenge => {

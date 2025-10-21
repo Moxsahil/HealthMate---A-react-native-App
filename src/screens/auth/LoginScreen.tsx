@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,18 +8,23 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { useDispatch, useSelector } from 'react-redux';
-import { MaterialIcons } from '@expo/vector-icons';
-import { AuthStackParamList } from '../../types/navigation';
-import { useTheme } from '../../hooks/useTheme';
-import { RootState } from '../../store/store';
-import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
-import AuthService from '../../services/AuthService';
+} from "react-native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { useDispatch, useSelector } from "react-redux";
+import { MaterialIcons } from "@expo/vector-icons";
+import { AuthStackParamList } from "../../types/navigation";
+import { useTheme } from "../../hooks/useTheme";
+import { RootState } from "../../store/store";
+import {
+  loginStart,
+  loginSuccess,
+  loginFailure,
+} from "../../store/slices/authSlice";
+import AuthService from "../../services/AuthService";
+import { useGoogleAuth } from "../../services/useGoogleAuth";
 
 type LoginScreenProps = {
-  navigation: StackNavigationProp<AuthStackParamList, 'Login'>;
+  navigation: StackNavigationProp<AuthStackParamList, "Login">;
 };
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
@@ -27,13 +32,42 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Use the Google Auth hook
+  const {
+    request,
+    promptAsync,
+    user: googleUser,
+    error: googleError,
+  } = useGoogleAuth();
+
+  // Handle Google user authentication
+  React.useEffect(() => {
+    if (googleUser) {
+      dispatch(
+        loginSuccess({
+          id: googleUser.id,
+          email: googleUser.email,
+          name: googleUser.name,
+          avatar: googleUser.avatar,
+        })
+      );
+    }
+  }, [googleUser]);
+
+  // Handle Google errors
+  React.useEffect(() => {
+    if (googleError) {
+      dispatch(loginFailure(googleError));
+    }
+  }, [googleError]);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
@@ -41,30 +75,40 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     try {
       const user = await AuthService.loginWithEmail(email, password);
-      dispatch(loginSuccess({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatar: user.avatar,
-      }));
+      dispatch(
+        loginSuccess({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          avatar: user.avatar,
+        })
+      );
     } catch (error) {
-      dispatch(loginFailure(error instanceof Error ? error.message : 'Login failed'));
+      dispatch(
+        loginFailure(error instanceof Error ? error.message : "Login failed")
+      );
     }
   };
 
   const handleGoogleLogin = async () => {
+    if (!request) {
+      Alert.alert("Error", "Google Sign-In is not ready yet");
+      return;
+    }
+
     dispatch(loginStart());
 
     try {
-      const user = await AuthService.loginWithGoogle();
-      dispatch(loginSuccess({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatar: user.avatar,
-      }));
+      const result = await promptAsync();
+      console.log("Google auth result:", result);
+      // The user will be handled by the useEffect above
     } catch (error) {
-      dispatch(loginFailure(error instanceof Error ? error.message : 'Google Sign-In failed'));
+      console.error("Google prompt error:", error);
+      dispatch(
+        loginFailure(
+          error instanceof Error ? error.message : "Google Sign-In failed"
+        )
+      );
     }
   };
 
@@ -73,17 +117,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     try {
       const user = await AuthService.loginWithApple();
-      dispatch(loginSuccess({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatar: user.avatar,
-      }));
+      dispatch(
+        loginSuccess({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          avatar: user.avatar,
+        })
+      );
     } catch (error) {
-      dispatch(loginFailure(error instanceof Error ? error.message : 'Apple Sign-In failed'));
+      dispatch(
+        loginFailure(
+          error instanceof Error ? error.message : "Apple Sign-In failed"
+        )
+      );
     }
   };
-
 
   const styles = StyleSheet.create({
     container: {
@@ -94,40 +143,40 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     header: {
       paddingTop: 20,
       paddingBottom: 32,
-      alignItems: 'center',
+      alignItems: "center",
     },
     backButton: {
-      position: 'absolute',
+      position: "absolute",
       left: 0,
       top: 20,
       padding: 8,
     },
     title: {
       fontSize: 24,
-      fontWeight: 'bold',
+      fontWeight: "bold",
       color: colors.text,
-      textAlign: 'center',
+      textAlign: "center",
     },
     subtitle: {
       fontSize: 16,
       color: colors.textSecondary,
-      textAlign: 'center',
+      textAlign: "center",
       marginTop: 8,
     },
     form: {
       flex: 1,
-      justifyContent: 'center',
+      justifyContent: "center",
       gap: 24,
     },
     inputContainer: {
       gap: 16,
     },
     inputGroup: {
-      position: 'relative',
+      position: "relative",
     },
     label: {
       fontSize: 16,
-      fontWeight: '500',
+      fontWeight: "500",
       color: colors.text,
       marginBottom: 8,
     },
@@ -142,19 +191,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       color: colors.text,
     },
     passwordContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
     },
     passwordInput: {
       flex: 1,
     },
-    eyeIcon: {
-      position: 'absolute',
+    eyeMaterialIcons: {
+      position: "absolute",
       right: 16,
       padding: 4,
     },
     forgotPassword: {
-      alignSelf: 'flex-end',
+      alignSelf: "flex-end",
       marginTop: 8,
     },
     forgotPasswordText: {
@@ -165,17 +214,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       backgroundColor: colors.primary,
       paddingVertical: 16,
       borderRadius: 12,
-      alignItems: 'center',
+      alignItems: "center",
       marginTop: 16,
     },
     loginButtonText: {
-      color: 'white',
+      color: "white",
       fontSize: 16,
-      fontWeight: '600',
+      fontWeight: "600",
     },
     divider: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginVertical: 24,
     },
     dividerLine: {
@@ -195,17 +244,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       paddingVertical: 12,
       paddingHorizontal: 16,
       borderRadius: 12,
-      alignItems: 'center',
+      alignItems: "center",
       marginBottom: 12,
     },
     socialButtonText: {
       color: colors.text,
       fontSize: 16,
-      fontWeight: '500',
+      fontWeight: "500",
     },
     signupContainer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
+      flexDirection: "row",
+      justifyContent: "center",
       paddingBottom: 24,
     },
     signupText: {
@@ -215,13 +264,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     signupLink: {
       color: colors.primary,
       fontSize: 14,
-      fontWeight: '600',
+      fontWeight: "600",
       marginLeft: 4,
     },
     errorText: {
       color: colors.error,
       fontSize: 14,
-      textAlign: 'center',
+      textAlign: "center",
       marginTop: 8,
     },
   });
@@ -270,11 +319,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 autoCorrect={false}
               />
               <TouchableOpacity
-                style={styles.eyeIcon}
+                style={styles.eyeMaterialIcons}
                 onPress={() => setShowPassword(!showPassword)}
               >
                 <MaterialIcons
-                  name={showPassword ? 'visibility-off' : 'visibility'}
+                  name={showPassword ? "visibility-off" : "visibility"}
                   size={20}
                   color={colors.textSecondary}
                 />
@@ -283,7 +332,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
             <TouchableOpacity
               style={styles.forgotPassword}
-              onPress={() => navigation.navigate('ForgotPassword')}
+              onPress={() => navigation.navigate("ForgotPassword")}
             >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
@@ -313,7 +362,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <TouchableOpacity
           style={styles.socialButton}
           onPress={handleGoogleLogin}
-          disabled={isLoading}
+          disabled={isLoading || !request}
         >
           <Text style={styles.socialButtonText}>Continue with Google</Text>
         </TouchableOpacity>
@@ -329,7 +378,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
       <View style={styles.signupContainer}>
         <Text style={styles.signupText}>Don't have an account?</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+        <TouchableOpacity onPress={() => navigation.navigate("Register")}>
           <Text style={styles.signupLink}>Sign Up</Text>
         </TouchableOpacity>
       </View>

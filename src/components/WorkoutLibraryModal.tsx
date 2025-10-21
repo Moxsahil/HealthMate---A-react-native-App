@@ -9,6 +9,7 @@ import {
   TextInput,
   Dimensions,
   FlatList,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
@@ -94,14 +95,36 @@ const WorkoutLibraryModal: React.FC<WorkoutLibraryModalProps> = ({
   };
 
   const handleCreateCustomWorkout = () => {
-    const customTemplate = WorkoutService.generateCustomWorkout(
-      30, // 30 minutes default
-      'Strength', // Default category
-      'Intermediate', // Default difficulty
-      exercises
+    // Show alert to let user choose how to create custom workout
+    Alert.alert(
+      'Create Custom Workout',
+      'Choose how you want to create your workout',
+      [
+        {
+          text: 'Quick Generate',
+          onPress: () => {
+            const customTemplate = WorkoutService.generateCustomWorkout(
+              30, // 30 minutes default
+              'Strength', // Default category
+              'Intermediate', // Default difficulty
+              exercises
+            );
+            handleStartWorkout(customTemplate);
+          },
+        },
+        {
+          text: 'Build From Scratch',
+          onPress: () => {
+            Alert.alert(
+              'Coming Soon',
+              'Custom workout builder is coming soon! For now, you can use Quick Generate to create a workout based on your preferences.',
+              [{ text: 'OK' }]
+            );
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
     );
-
-    handleStartWorkout(customTemplate);
   };
 
   const renderFilterChip = (
@@ -343,15 +366,16 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
     gap: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
+    paddingVertical: 0,
   },
   filtersContainer: {
     marginHorizontal: 20,

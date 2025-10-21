@@ -1,8 +1,4 @@
-import {
-  initializeApp,
-  getApps,
-  FirebaseApp
-} from 'firebase/app';
+import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import {
   getAuth,
   Auth,
@@ -15,25 +11,34 @@ import {
   signInWithCredential,
   onAuthStateChanged,
   AuthError,
-  OAuthProvider
-} from 'firebase/auth';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import * as Crypto from 'expo-crypto';
-import { Platform } from 'react-native';
+  OAuthProvider,
+} from "firebase/auth";
+import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as Crypto from "expo-crypto";
+import { Platform } from "react-native";
 
 // Enable WebBrowser for auth session
 WebBrowser.maybeCompleteAuthSession();
 
 // Firebase configuration - Real Firebase setup
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyA8kVwTl7FZmS8xVr1K2L3J4H9G5F2E1D0",
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "healthmate-demo-12345.firebaseapp.com",
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "healthmate-demo-12345",
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "healthmate-demo-12345.appspot.com",
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:123456789012:web:abcdef1234567890"
+  apiKey:
+    process.env.EXPO_PUBLIC_FIREBASE_API_KEY ||
+    "AIzaSyA8kVwTl7FZmS8xVr1K2L3J4H9G5F2E1D0",
+  authDomain:
+    process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ||
+    "healthmate-demo-12345.firebaseapp.com",
+  projectId:
+    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "healthmate-demo-12345",
+  storageBucket:
+    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+    "healthmate-demo-12345.appspot.com",
+  messagingSenderId:
+    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
+  appId:
+    process.env.EXPO_PUBLIC_FIREBASE_APP_ID ||
+    "1:123456789012:web:abcdef1234567890",
 };
 
 // Initialize Firebase
@@ -43,24 +48,15 @@ let auth: Auth;
 // Initialize Firebase (only once)
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
-  console.log('Firebase app initialized successfully');
+  console.log("Firebase app initialized successfully");
 } else {
   app = getApps()[0];
-  console.log('Using existing Firebase app');
+  console.log("Using existing Firebase app");
 }
 
 // Initialize Auth (Firebase automatically uses AsyncStorage in React Native)
 auth = getAuth(app);
-console.log('Firebase Auth initialized');
-
-
-// Google OAuth configuration
-const googleConfig = {
-  clientId: process.env.EXPO_PUBLIC_GOOGLE_SIGNIN_WEB_CLIENT_ID || '',
-  scopes: ['openid', 'profile', 'email'],
-  additionalParameters: {},
-  customParameters: {},
-};
+console.log("Firebase Auth initialized");
 
 export { auth };
 
@@ -80,20 +76,24 @@ export class AuthService {
     name: string
   ): Promise<AuthUser> {
     try {
-      console.log('Firebase registration attempt for:', email, name);
+      console.log("Firebase registration attempt for:", email, name);
 
       // Create user with Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       const firebaseUser = userCredential.user;
 
-      console.log('Firebase user created:', firebaseUser.uid);
+      console.log("Firebase user created:", firebaseUser.uid);
 
       // Update user profile with display name
       await updateProfile(firebaseUser, {
         displayName: name,
       });
 
-      console.log('User profile updated with name:', name);
+      console.log("User profile updated with name:", name);
 
       const authUser: AuthUser = {
         id: firebaseUser.uid,
@@ -103,131 +103,64 @@ export class AuthService {
         emailVerified: firebaseUser.emailVerified,
       };
 
-      console.log('User registered successfully:', authUser);
+      console.log("User registered successfully:", authUser);
       return authUser;
-
     } catch (error: any) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       const authError = error as AuthError;
       throw new Error(this.getErrorMessage(authError.code));
     }
   }
 
   // Email/Password Login
-  static async loginWithEmail(email: string, password: string): Promise<AuthUser> {
+  static async loginWithEmail(
+    email: string,
+    password: string
+  ): Promise<AuthUser> {
     try {
-      console.log('Firebase login attempt for:', email);
+      console.log("Firebase login attempt for:", email);
 
       // Sign in with Firebase Authentication
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       const firebaseUser = userCredential.user;
 
-      console.log('Firebase user signed in:', firebaseUser.uid);
+      console.log("Firebase user signed in:", firebaseUser.uid);
 
       const authUser: AuthUser = {
         id: firebaseUser.uid,
         email: firebaseUser.email!,
-        name: firebaseUser.displayName || 'User',
+        name: firebaseUser.displayName || "User",
         avatar: firebaseUser.photoURL || undefined,
         emailVerified: firebaseUser.emailVerified,
       };
 
-      console.log('User logged in successfully:', authUser);
+      console.log("User logged in successfully:", authUser);
       return authUser;
-
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       const authError = error as AuthError;
       throw new Error(this.getErrorMessage(authError.code));
-    }
-  }
-
-  // Google Sign In using proper redirect URI
-  static async loginWithGoogle(): Promise<AuthUser> {
-    try {
-      console.log('Google Sign-In attempt started');
-
-      const clientId = process.env.EXPO_PUBLIC_GOOGLE_SIGNIN_WEB_CLIENT_ID;
-      if (!clientId) {
-        throw new Error('Google Client ID not configured');
-      }
-
-      // Use a fixed redirect URI that should be in your Google Console
-      const redirectUri = 'https://auth.expo.io/@anonymous/healthmate';
-
-      console.log('Using redirect URI:', redirectUri);
-      console.log('Using client ID:', clientId);
-
-      // Build auth URL manually
-      const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' +
-        new URLSearchParams({
-          client_id: clientId,
-          redirect_uri: redirectUri,
-          response_type: 'id_token',
-          scope: 'openid profile email',
-          nonce: Math.random().toString(36).substring(2, 15),
-          prompt: 'select_account',
-        }).toString();
-
-      console.log('Opening Google authentication...');
-
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-      console.log('Auth result:', result);
-
-      if (result.type !== 'success') {
-        throw new Error('Authentication cancelled');
-      }
-
-      // Extract ID token from URL fragment
-      const url = result.url;
-      const fragment = url.split('#')[1];
-      if (!fragment) {
-        throw new Error('No authentication data received');
-      }
-
-      const params = new URLSearchParams(fragment);
-      const idToken = params.get('id_token');
-
-      if (!idToken) {
-        throw new Error('No ID token received');
-      }
-
-      // Create Firebase credential
-      const credential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(auth, credential);
-      const firebaseUser = userCredential.user;
-
-      const authUser: AuthUser = {
-        id: firebaseUser.uid,
-        email: firebaseUser.email!,
-        name: firebaseUser.displayName || 'User',
-        avatar: firebaseUser.photoURL || undefined,
-        emailVerified: firebaseUser.emailVerified,
-      };
-
-      return authUser;
-
-    } catch (error: any) {
-      console.error('Google Sign-In error:', error);
-      throw new Error('Google Sign-In failed: ' + error.message);
     }
   }
 
   // Apple Sign In (iOS only)
   static async loginWithApple(): Promise<AuthUser> {
     try {
-      if (Platform.OS !== 'ios') {
-        throw new Error('Apple Sign-In is only available on iOS devices');
+      if (Platform.OS !== "ios") {
+        throw new Error("Apple Sign-In is only available on iOS devices");
       }
 
       // Check if Apple Sign-In is available
       const isAvailable = await AppleAuthentication.isAvailableAsync();
       if (!isAvailable) {
-        throw new Error('Apple Sign-In is not available on this device');
+        throw new Error("Apple Sign-In is not available on this device");
       }
 
-      console.log('Apple Sign-In attempt started');
+      console.log("Apple Sign-In attempt started");
 
       // Generate a random nonce for security
       const nonce = Math.random().toString(36).substring(2, 10);
@@ -246,10 +179,10 @@ export class AuthService {
         nonce: hashedNonce,
       });
 
-      console.log('Apple Sign-In successful:', appleCredential.user);
+      console.log("Apple Sign-In successful:", appleCredential.user);
 
       // Create an Apple credential for Firebase
-      const provider = new OAuthProvider('apple.com');
+      const provider = new OAuthProvider("apple.com");
       const credential = provider.credential({
         idToken: appleCredential.identityToken!,
         rawNonce: nonce,
@@ -259,44 +192,44 @@ export class AuthService {
       const userCredential = await signInWithCredential(auth, credential);
       const firebaseUser = userCredential.user;
 
-      console.log('Firebase Apple Sign-In successful:', firebaseUser.uid);
+      console.log("Firebase Apple Sign-In successful:", firebaseUser.uid);
 
       // Apple doesn't always provide name and email, so use what's available
       const displayName =
-        appleCredential.fullName?.givenName && appleCredential.fullName?.familyName
+        appleCredential.fullName?.givenName &&
+        appleCredential.fullName?.familyName
           ? `${appleCredential.fullName.givenName} ${appleCredential.fullName.familyName}`
-          : firebaseUser.displayName || 'User';
+          : firebaseUser.displayName || "User";
 
       const authUser: AuthUser = {
         id: firebaseUser.uid,
-        email: firebaseUser.email || appleCredential.email || '',
+        email: firebaseUser.email || appleCredential.email || "",
         name: displayName,
         avatar: firebaseUser.photoURL || undefined,
         emailVerified: firebaseUser.emailVerified,
       };
 
       // Update profile if we got name from Apple but Firebase doesn't have it
-      if (displayName !== firebaseUser.displayName && displayName !== 'User') {
+      if (displayName !== firebaseUser.displayName && displayName !== "User") {
         await updateProfile(firebaseUser, { displayName });
       }
 
-      console.log('Apple user authenticated:', authUser);
+      console.log("Apple user authenticated:", authUser);
       return authUser;
-
     } catch (error: any) {
-      console.error('Apple Sign-In error:', error);
+      console.error("Apple Sign-In error:", error);
 
-      if (error.code === 'ERR_CANCELED') {
-        throw new Error('Apple Sign-In was cancelled');
-      } else if (error.code === 'ERR_INVALID_RESPONSE') {
-        throw new Error('Invalid response from Apple');
-      } else if (error.code === 'ERR_NOT_HANDLED') {
-        throw new Error('Apple Sign-In not handled');
-      } else if (error.code === 'ERR_UNKNOWN') {
-        throw new Error('Unknown Apple Sign-In error');
+      if (error.code === "ERR_CANCELED") {
+        throw new Error("Apple Sign-In was cancelled");
+      } else if (error.code === "ERR_INVALID_RESPONSE") {
+        throw new Error("Invalid response from Apple");
+      } else if (error.code === "ERR_NOT_HANDLED") {
+        throw new Error("Apple Sign-In not handled");
+      } else if (error.code === "ERR_UNKNOWN") {
+        throw new Error("Unknown Apple Sign-In error");
       }
 
-      throw new Error('Apple Sign-In failed: ' + error.message);
+      throw new Error("Apple Sign-In failed: " + error.message);
     }
   }
 
@@ -313,17 +246,12 @@ export class AuthService {
   // Sign Out
   static async logout(): Promise<void> {
     try {
-      console.log('Signing out user...');
-
-      // Note: With Expo AuthSession, there's no persistent Google session to sign out from
-      // The user will need to re-authenticate with Google on next login
-
-      // Sign out from Firebase
+      console.log("Signing out user...");
       await signOut(auth);
-      console.log('User signed out successfully');
+      console.log("User signed out successfully");
     } catch (error) {
-      console.error('Logout error:', error);
-      throw new Error('Failed to sign out');
+      console.error("Logout error:", error);
+      throw new Error("Failed to sign out");
     }
   }
 
@@ -334,11 +262,11 @@ export class AuthService {
   }): Promise<void> {
     try {
       const user = auth.currentUser;
-      if (!user) throw new Error('No user signed in');
+      if (!user) throw new Error("No user signed in");
 
       await updateProfile(user, updates);
     } catch (error) {
-      throw new Error('Failed to update profile');
+      throw new Error("Failed to update profile");
     }
   }
 
@@ -349,7 +277,7 @@ export class AuthService {
       return {
         id: firebaseUser.uid,
         email: firebaseUser.email!,
-        name: firebaseUser.displayName || 'User',
+        name: firebaseUser.displayName || "User",
         avatar: firebaseUser.photoURL || undefined,
         emailVerified: firebaseUser.emailVerified,
       };
@@ -358,24 +286,29 @@ export class AuthService {
   }
 
   // Auth State Listener
-  static onAuthStateChange(callback: (user: AuthUser | null) => void): () => void {
-    console.log('Setting up Firebase auth state listener...');
+  static onAuthStateChange(
+    callback: (user: AuthUser | null) => void
+  ): () => void {
+    console.log("Setting up Firebase auth state listener...");
 
     return onAuthStateChanged(auth, (firebaseUser) => {
-      console.log('Auth state changed:', firebaseUser ? firebaseUser.uid : 'null');
+      console.log(
+        "Auth state changed:",
+        firebaseUser ? firebaseUser.uid : "null"
+      );
 
       if (firebaseUser) {
         const authUser: AuthUser = {
           id: firebaseUser.uid,
           email: firebaseUser.email!,
-          name: firebaseUser.displayName || 'User',
+          name: firebaseUser.displayName || "User",
           avatar: firebaseUser.photoURL || undefined,
           emailVerified: firebaseUser.emailVerified,
         };
-        console.log('User authenticated:', authUser);
+        console.log("User authenticated:", authUser);
         callback(authUser);
       } else {
-        console.log('User not authenticated');
+        console.log("User not authenticated");
         callback(null);
       }
     });
@@ -384,24 +317,24 @@ export class AuthService {
   // Error message mapping
   private static getErrorMessage(errorCode: string): string {
     switch (errorCode) {
-      case 'auth/user-not-found':
-        return 'No account found with this email address.';
-      case 'auth/wrong-password':
-        return 'Incorrect password.';
-      case 'auth/email-already-in-use':
-        return 'An account with this email already exists.';
-      case 'auth/weak-password':
-        return 'Password should be at least 6 characters long.';
-      case 'auth/invalid-email':
-        return 'Please enter a valid email address.';
-      case 'auth/user-disabled':
-        return 'This account has been disabled.';
-      case 'auth/too-many-requests':
-        return 'Too many failed login attempts. Please try again later.';
-      case 'auth/network-request-failed':
-        return 'Network error. Please check your internet connection.';
+      case "auth/user-not-found":
+        return "No account found with this email address.";
+      case "auth/wrong-password":
+        return "Incorrect password.";
+      case "auth/email-already-in-use":
+        return "An account with this email already exists.";
+      case "auth/weak-password":
+        return "Password should be at least 6 characters long.";
+      case "auth/invalid-email":
+        return "Please enter a valid email address.";
+      case "auth/user-disabled":
+        return "This account has been disabled.";
+      case "auth/too-many-requests":
+        return "Too many failed login attempts. Please try again later.";
+      case "auth/network-request-failed":
+        return "Network error. Please check your internet connection.";
       default:
-        return 'An error occurred. Please try again.';
+        return "An error occurred. Please try again.";
     }
   }
 
@@ -409,22 +342,22 @@ export class AuthService {
   static async createDemoAccount(): Promise<AuthUser> {
     // For development/demo purposes
     const demoEmail = `demo_${Date.now()}@healthmate.app`;
-    const demoPassword = 'demo123456';
-    const demoName = 'Demo User';
+    const demoPassword = "demo123456";
+    const demoName = "Demo User";
 
     return this.registerWithEmail(demoEmail, demoPassword, demoName);
   }
 
   static async loginAsDemoUser(): Promise<AuthUser> {
     // For development/demo purposes
-    const demoEmail = 'demo@healthmate.app';
-    const demoPassword = 'demo123456';
+    const demoEmail = "demo@healthmate.app";
+    const demoPassword = "demo123456";
 
     try {
       return await this.loginWithEmail(demoEmail, demoPassword);
     } catch (error) {
       // If demo user doesn't exist, create it
-      return this.registerWithEmail(demoEmail, demoPassword, 'Demo User');
+      return this.registerWithEmail(demoEmail, demoPassword, "Demo User");
     }
   }
 }

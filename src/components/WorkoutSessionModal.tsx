@@ -178,6 +178,8 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
 
   const renderExercise = (exerciseData: any, index: number) => {
     const exercise = exercises.find(ex => ex.id === exerciseData.exerciseId);
+    const sets = Array.isArray(exerciseData?.sets) ? exerciseData.sets : [];
+
     if (!exercise) {
       // Fallback for exercises not found in database
       return (
@@ -207,19 +209,19 @@ const WorkoutSessionModal: React.FC<WorkoutSessionModalProps> = ({
         <View style={styles.setsContainer}>
           <View style={[styles.setsHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.setsHeaderText, { color: colors.textSecondary }]}>Set</Text>
-            {exerciseData.sets[0]?.reps !== undefined && (
+            {sets[0]?.reps !== undefined && (
               <Text style={[styles.setsHeaderText, { color: colors.textSecondary }]}>Reps</Text>
             )}
-            {exerciseData.sets[0]?.weight !== undefined && (
+            {sets[0]?.weight !== undefined && (
               <Text style={[styles.setsHeaderText, { color: colors.textSecondary }]}>Weight</Text>
             )}
-            {exerciseData.sets[0]?.duration !== undefined && (
+            {sets[0]?.duration !== undefined && (
               <Text style={[styles.setsHeaderText, { color: colors.textSecondary }]}>Duration</Text>
             )}
             <Text style={[styles.setsHeaderText, { color: colors.textSecondary }]}>✓</Text>
           </View>
 
-          {(exerciseData.sets || []).map((set: WorkoutSet, setIndex: number) =>
+          {sets.map((set: WorkoutSet, setIndex: number) =>
             renderSetRow(set, setIndex, exerciseData.exerciseId)
           )}
         </View>

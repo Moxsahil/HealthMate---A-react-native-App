@@ -434,9 +434,6 @@ const WorkoutsScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Workouts</Text>
-          <TouchableOpacity>
-            <Ionicons name="person-circle" size={32} color={colors.primary} />
-          </TouchableOpacity>
         </View>
 
         {renderQuickStart()}
@@ -471,9 +468,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
